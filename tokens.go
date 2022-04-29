@@ -1,9 +1,9 @@
 package main
 
 import (
-	// "log"
-	// "os"
 
+	// "os"
+	"fmt"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -21,24 +21,15 @@ func login(c *fiber.Ctx) error {
 	}
 	userName := payload.Name
 	mpin := payload.Mpin
-	//strconv.ParseInt(pass, 10)
-
-	//var acc bool = false
 
 	if userName != "diam" || mpin != "diam123" {
-		return c.SendStatus(fiber.StatusUnauthorized)
+		return c.JSON(fiber.Map{"Status": "401", "message": "Unauthorized"})
 	}
 
-	// if userName == "admin" {
-	// 	acc = true
-	// }
-
-	// Create the Claims
 	claims := jwt.MapClaims{
 		"name": userName,
 		"type": "Access token",
-		//	"access": acc,
-		"exp": time.Now().Add(time.Minute * 5).Unix(),
+		"exp":  time.Now().Add(time.Minute * 5).Unix(),
 	}
 
 	// Create token
@@ -64,6 +55,9 @@ func login(c *fiber.Ctx) error {
 	if err != nil {
 		return c.SendStatus(fiber.StatusInternalServerError)
 	}
+
+	fmt.Println(accessToken)
+
 	return c.JSON(fiber.Map{"statusCode": 200, "accessToken": accessToken, "refreshToken": refreshToken})
 }
 

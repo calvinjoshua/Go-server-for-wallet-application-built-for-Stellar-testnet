@@ -1,10 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
-
-	//"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -13,7 +12,6 @@ import (
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/txnbuild"
-	//"github.com/golang-jwt/jwt/v4"
 )
 
 //The below function creates a keypair and funds that address to make it an account
@@ -22,6 +20,7 @@ func keyPair() *keypair.Full {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	source := os.Getenv("SEED1")
 
 	client := horizonclient.DefaultPublicNetClient
@@ -68,8 +67,11 @@ func keyPair() *keypair.Full {
 	return kp1
 }
 
-func transfer(dest string, amt string) {
-	source := os.Getenv("SEED1")
+func transfer(dest string, amt string, signature string) bool {
+
+	key := "9ddc81b978ae0aac1004044fec15ed7b5b7fe1f3349ca2365ff65d82e0d0855d"
+	diamSeedEncrypted := decrypt(signature, key)
+	source := diamSeedEncrypted //os.Getenv("SEED1") //seed goes here
 	destination := dest
 	client := horizonclient.DefaultPublicNetClient
 	log.Println(destination)
@@ -107,19 +109,22 @@ func transfer(dest string, amt string) {
 	)
 
 	if err != nil {
-		panic(err)
+		return false //panic(err)
 	}
 
 	tx, err = tx.Sign(network.PublicNetworkPassphrase, sourceKP)
 	if err != nil {
-		panic(err)
+		return false //panic(err)
 	}
 
 	resp, err := horizonclient.DefaultPublicNetClient.SubmitTransaction(tx)
 	if err != nil {
-		panic(err)
+		return false //panic(err)
 	}
-	log.Println("Hash:", resp.Hash)
+
+	fmt.Println(resp)
+
+	return true
 
 }
 
@@ -171,7 +176,6 @@ func main() {
 	/////                                                                                                                                                                  //////
 	/////                             Account creation                                                                                                                     //////
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 	app.Get("/AccountCreation", func(c *fiber.Ctx) error {
 
 		var sa = keyPair()
@@ -184,17 +188,34 @@ func main() {
 	/////                                                                                                                                                                  //////
 	/////                                Native Diam Transfer                                                                                                              //////
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	app.Post("/Transfer/:address/:amt", func(c *fiber.Ctx) error {
+	app.Post("/Transfer", func(c *fiber.Ctx) error {
+		payload := struct {
+			Address   string `json:"address"`
+			Amount    string `json:"amount"`
+			Signature string `json:"signature"`
+		}{}
 
-		var sa = c.Params("address")
-		var amt = c.Params("amt")
+		if err := c.BodyParser(&payload); err != nil {
+			return c.SendStatus(fiber.StatusInternalServerError)
+		}
 
-		var val = check(sa)
+		address := payload.Address
+		amount := payload.Amount
+		signature := payload.Signature
+
+		// var sa = c.Params("address")
+		// var amt = c.Params("amt")
+
+		var val = check(address)
 		if val == "valid" {
-			transfer(sa, amt)
-			return c.SendString("Credited to Address: " + sa)
+			resp := transfer(address, amount, signature)
+			if resp {
+				return c.JSON(fiber.Map{"statusCode": 200, "message": "Transferred"})
+			} else {
+				return c.JSON(fiber.Map{"statusCode": 500, "message": "Transfer failed, internal server error"})
+			}
 		} else {
-			return c.SendString("INVALID ADDRESS: " + sa)
+			return c.JSON(fiber.Map{"statusCode": 401, "message": "INVLAID ADDRESS"})
 		}
 	})
 
