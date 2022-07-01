@@ -1,0 +1,14 @@
+[Unit]
+Description=My server01
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=5s
+ExecStart=/home/ubuntu/go/src/dc_diamnet_walletservices/api
+
+[Install]
+WantedBy=multi-user.target
+~
+~
+vim  /lib/systemd/system/goapp1.service

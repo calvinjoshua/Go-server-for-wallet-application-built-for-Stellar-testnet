@@ -62,7 +62,7 @@ func login(c *fiber.Ctx) error {
 }
 
 func Regenerate(c *fiber.Ctx) error {
-	user := c.Locals("user").(*jwt.Token)
+	user := c.Locals("user").(*jwt.Token)  
 	claims := user.Claims.(jwt.MapClaims)
 	name := claims["name"].(string)
 
